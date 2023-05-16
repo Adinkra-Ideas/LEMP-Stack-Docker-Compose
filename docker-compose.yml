@@ -1,0 +1,80 @@
+version: "2.17"
+
+# Volume props. Can be called anywhere within this file
+# as '- propsName' to abide by DRY policy
+volumes:
+    mariadb:
+        name: db_vol
+        driver: local
+        driver_opts:
+               device: /home/euyi/data/db_vol/
+               o: bind
+               type: none
+
+    wordpress:
+        name: htdocs_vol
+        driver: local
+        driver_opts:
+               device: /home/euyi/data/htdocs_vol/
+               o: bind
+               type: none
+
+# Networks props
+networks:
+    inception:
+        name: euyi-net
+
+# 'services' is the core that builds and runs the containers.
+# Only 'build' and 'image' are build-time attributes. The 
+# rest attributes are run-time
+services:
+    nginx:
+        build: ./requirements/nginx/
+        image: nginx:inception
+        container_name: nginx
+        depends_on:
+            - wordpress
+        volumes:
+            # first, create a Mountpoint to ensure directories get created if not exist
+            - /home/euyi/data/htdocs_vol/:/htdocs_vol/
+            # Then, create Volume for the Mountpoint so we can manage it through Docker
+            - wordpress:/htdocs_vol/
+        networks:
+            - inception
+        ports:
+            - "443:443"
+        restart: unless-stopped
+        env_file:
+            - ./.env
+
+    wordpress:
+        build: ./requirements/wordpress/
+        image: wordpress:inception
+        container_name: wordpress
+        depends_on:
+            - mariadb
+        volumes:
+            # first, create a Mountpoint to ensure directories get created if n>
+            - /home/euyi/data/htdocs_vol/:/htdocs_vol/
+            # Then, create Volume for the Mountpoint so we can manage it throug>
+            - wordpress:/htdocs_vol/
+        networks:
+            - inception
+        restart: unless-stopped
+        env_file:
+            - ./.env
+
+    mariadb:
+        build: ./requirements/mariadb/
+        image: mariadb:inception
+        container_name: mariadb
+        volumes:
+            # first, create a Mountpoint to ensure directories get created if n>
+            - /home/euyi/data/db_vol/:/var/lib/mysql/
+            # Then, create Volume for the Mountpoint so we can manage it throug>
+            - mariadb:/var/lib/mysql/
+        networks:
+            - inception
+        restart: unless-stopped
+        env_file:
+            - ./.env
